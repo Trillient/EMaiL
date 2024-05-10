@@ -41,10 +41,8 @@ This project is a Python script that converts spoken input into an email respons
 
 4. The script will generate an email response based on your speech input and open a draft in Microsoft Outlook for you to review and send.
 
-## Contributing
-
-Contributions are welcome! If you find any issues or have suggestions for improvement, please open an issue or submit a pull request.
-
 ## License
 
 All rights reserved. No part of this project may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of the author, except in the case of brief quotations embodied in critical reviews and certain other noncommercial uses permitted by copyright law.
+
+## Screenshots
