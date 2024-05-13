@@ -141,11 +141,14 @@ class CustomApp(tk.CTk):
                     print("Whisper recognized: " + transcription_text)
                     return {"success": True, "error": None, "transcription": transcription_text}
                 else:
+                    # If no transcription is detected, set it to ":)"
                     print("No transcription results.")
-                    return {"success": False, "error": "No transcription results", "transcription": None}
             except Exception as e:
                 print(f"An exception occurred while processing the transcription: {e}")
-                return {"success": False, "error": str(e), "transcription": None}
+
+            # If there is any issue with transcription or it's empty, set to ":)"
+            return {"success": True, "error": "Defaulting to :)", "transcription": ":)"}
+
 
     # Generate an email using GPT based on the prompt
     def generate_email(self, prompt: str) -> str:
