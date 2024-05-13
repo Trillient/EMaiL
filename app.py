@@ -122,30 +122,30 @@ class CustomApp(tk.CTk):
             wf.setframerate(fs)
             wf.writeframes(b''.join(frames))
 
-    # Transcribe speech from an audio file using Google Cloud Speech-to-Text
-    def recognize_speech_from_google(self):
+    # Transcribe speech from an audio file using OpenAI Whisper
+    def recognize_speech_from_whisper(self):
         filename = "speech.wav"
         self.record_audio(filename)
 
         with open(filename, "rb") as audio_file:
-            audio_content = audio_file.read()
-
-        audio = speech.RecognitionAudio(content=audio_content)
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code="en-US"
-        )
-
-        response = client.recognize(config=config, audio=audio)
-
-        if response.results:
-            transcription = response.results[0].alternatives[0].transcript
-            print("Google Speech-to-Text recognized: " + transcription)
-            return {"success": True, "error": None, "transcription": transcription}
-        else:
-            print("No transcription results.")
-            return {"success": False, "error": "No transcription results", "transcription": None}
+            openai.api_key = openai_api_key  # Ensure the OpenAI API key is set correctly
+            try:
+                # Assuming the response is plain text as per your logs
+                transcription_text = openai.Audio.transcribe(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text"
+                )
+                # Check if the transcription_text contains actual text
+                if transcription_text:
+                    print("Whisper recognized: " + transcription_text)
+                    return {"success": True, "error": None, "transcription": transcription_text}
+                else:
+                    print("No transcription results.")
+                    return {"success": False, "error": "No transcription results", "transcription": None}
+            except Exception as e:
+                print(f"An exception occurred while processing the transcription: {e}")
+                return {"success": False, "error": str(e), "transcription": None}
 
     # Generate an email using GPT based on the prompt
     def generate_email(self, prompt: str) -> str:
@@ -168,7 +168,7 @@ class CustomApp(tk.CTk):
             # Check if the selected item has the ReplyAll method
             if hasattr(selected_email_item, 'ReplyAll'):
                 mail = selected_email_item.ReplyAll()
-                mail.Body = email_body + "\n\n" + mail.Body  # Prepend our response to the existing body
+                mail.Body = email_body
             else:
                 # Fall back to creating a new mail item if ReplyAll is not applicable
                 mail = outlook.CreateItem(0)
@@ -242,8 +242,8 @@ class CustomApp(tk.CTk):
 
     def main(self):
         try:
-            # Speech-to-Text with Google Cloud            
-            speech_to_text = self.recognize_speech_from_google()
+            # Speech-to-Text with Whisper
+            speech_to_text = self.recognize_speech_from_whisper()
             
             if not speech_to_text["success"] or not speech_to_text["transcription"]:
                 # Fallback to manual input if speech recognition fails or no transcription
