@@ -237,14 +237,8 @@ class CustomApp(tk.CTk):
         # Reply to the selected email or start a new email draft in Outlook
         pyperclip.copy(email_response)
 
-        # Create or reply to an email in Outlook, initialize COM
-        self.button_rec2 = tk.CTkButton(self, text="Show email draft in outlook", command=lambda: self.create_email_draft(email_response, selected_email_item))
-        self.button_rec2.pack(pady=5)
-
-        # Select New Email
-        self.button_rec3 = tk.CTkButton(self, text="Select new email", command=lambda: self.clear_rec())
-        self.button_rec3.pack(pady=5)
-
+        # Automatically show the email draft in Outlook and reset the UI afterward
+        self.create_email_draft(email_response, selected_email_item)
 
     def main(self):
         try:
@@ -259,7 +253,7 @@ class CustomApp(tk.CTk):
                 self.finalise_email(message)
         except Exception as e:
             print("An exception occurred:", e)
-            self.input_speech()
+            self.input_speech()  # Fallback to manual input on any error
 
 if __name__ == "__main__":
     app = CustomApp()
