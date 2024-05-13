@@ -11,6 +11,7 @@ import openai
 from dotenv import load_dotenv
 from template import prompt_template
 import logging
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -51,6 +52,55 @@ class CustomApp(tk.CTk):
 
         self.button_main = tk.CTkButton(self, text="Start Recording", command=self.start_recording)
         self.button_main.pack(pady=5)
+
+        self.button_settings = tk.CTkButton(self, text="Settings", command=self.open_settings)
+        self.button_settings.pack(side="top", anchor="ne", padx=10, pady=10)
+
+    def open_settings(self):
+        self.settings_window = tk.CTkToplevel(self)
+        self.settings_window.title("Settings")
+        self.settings_window.geometry("500x400")
+
+        name_label = tk.CTkLabel(self.settings_window, text="What is your first name?")
+        name_label.pack(pady=(20, 5))
+        self.name_entry = tk.CTkEntry(self.settings_window, width=400)
+        self.name_entry.pack(pady=(0, 20))
+
+        style_label = tk.CTkLabel(self.settings_window, text="Enter Email Examples here to show us your Email style:")
+        style_label.pack(pady=(10, 5))
+        self.style_text = tk.CTkTextbox(self.settings_window, height=10, width=400)
+        self.style_text.pack(pady=(0, 20), padx=20, fill='both', expand=True)
+
+        try:
+            with open("user_settings.json", "r", encoding='utf-8') as file:
+                settings = json.load(file)
+                self.name_entry.insert(0, settings["user_name"])
+                self.style_text.insert('1.0', settings["user_email_style"])
+        except FileNotFoundError:
+            print("No previous settings found. Starting fresh.")
+
+        save_button = tk.CTkButton(self.settings_window, text="Save Settings", command=self.save_settings)
+        save_button.pack(pady=10)
+
+    def save_settings(self):
+        settings = {
+            "user_name": self.name_entry.get(),
+            "user_email_style": self.style_text.get('1.0', 'end-1c')
+        }
+        with open("user_settings.json", "w", encoding='utf-8') as file:
+            json.dump(settings, file, ensure_ascii=False, indent=4)
+
+    def load_user_settings(self):
+        try:
+            with open("user_settings.json", "r", encoding='utf-8') as file:
+                settings = json.load(file)
+            return settings["user_name"], settings["user_email_style"]
+        except FileNotFoundError:
+            print("Settings file not found. Starting fresh.")
+            return None, None
+        except json.JSONDecodeError:
+            print("Error decoding settings. Check file format.")
+            return None, None
 
     # Begin main thread
     def start_recording(self):
@@ -231,24 +281,28 @@ class CustomApp(tk.CTk):
         submit_button.pack(pady=5)
 
     def finalise_email(self, message):
-        self.label_rec_2 = tk.CTkLabel(self, text=f"You said: {message}", font=("Arial", 12))
+        user_name, user_defined_style = self.load_user_settings()
+        if user_name is None or user_defined_style is None:
+            print("Error loading settings. Using default values.")
+            user_name = "Default User"
+            user_defined_style = "Please specify your email style in settings."
+
+        self.label_rec_2 = tk.CTkLabel(self, text=f"{user_name} said: {message}", font=("Arial", 12))
         self.label_rec_2.pack(pady=15)
 
-        pythoncom.CoInitialize()
         conversation_history, selected_email_item = self.get_selected_email_body_and_item()
         
-        # Generate the email using GPT
         full_prompt = prompt_template.format(
+            user_name=user_name,
+            user_defined_style=user_defined_style,
             conversation_history=conversation_history,
             speech_to_text_transcription=message
         )
         email_response = self.generate_email(full_prompt)
 
-        # Reply to the selected email or start a new email draft in Outlook
         pyperclip.copy(email_response)
-
-        # Automatically show the email draft in Outlook and reset the UI afterward
         self.create_email_draft(email_response, selected_email_item)
+
 
     def main(self):
         try:
