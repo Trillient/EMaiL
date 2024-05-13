@@ -150,7 +150,7 @@ class CustomApp(tk.CTk):
     # Generate an email using GPT based on the prompt
     def generate_email(self, prompt: str) -> str:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-0613",
+            model="gpt-3.5-turbo-0125",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
@@ -165,26 +165,38 @@ class CustomApp(tk.CTk):
         outlook = win32.Dispatch("Outlook.Application")
 
         if selected_email_item:
-            # Reply to the selected email
-            mail = selected_email_item.ReplyAll()
-            mail.Body = email_body # Prepend our response to the existing body
+            # Check if the selected item has the ReplyAll method
+            if hasattr(selected_email_item, 'ReplyAll'):
+                mail = selected_email_item.ReplyAll()
+                mail.Body = email_body + "\n\n" + mail.Body  # Prepend our response to the existing body
+            else:
+                # Fall back to creating a new mail item if ReplyAll is not applicable
+                mail = outlook.CreateItem(0)
+                mail.Body = email_body
         else:
             # Create a new email
             mail = outlook.CreateItem(0)
             mail.Body = email_body
+
         mail.Display(True)  # Show the email draft
+
+        # Reset the UI (simulate 'Select new email' functionality)
+        self.clear_rec()
 
     def clear_rec(self):
         # Remove recording labels and buttons
-            try:
-                self.label_rec_1.pack_forget()
-                self.label_rec_2.pack_forget()
-                self.button_rec.pack_forget()
-                self.button_rec2.pack_forget()
-                self.button_rec3.pack_forget()
-                pythoncom.CoUninitialize()
-            except Exception as e:
-                raise CustomError(f"Error in clear_rec: {e}")
+        try:
+            self.label_rec_1.pack_forget()
+            self.label_rec_2.pack_forget()
+            self.button_rec.pack_forget()
+            self.button_rec2.pack_forget()
+            self.button_rec3.pack_forget()
+        except AttributeError:
+            pass  # Handle the case where some widgets were not created due to errors
+
+        # Reset to initial state with the "Start Recording" button
+        self.button_main.pack(pady=5)
+        pythoncom.CoUninitialize()
 
     def input_speech(self):
         def submit():
@@ -239,14 +251,15 @@ class CustomApp(tk.CTk):
             # Speech-to-Text with Google Cloud            
             speech_to_text = self.recognize_speech_from_google()
             
-            if not speech_to_text["success"] or speech_to_text["error"]:
-                # Fallback to manual input if speech recognition fails
-                message = self.input_speech()
+            if not speech_to_text["success"] or not speech_to_text["transcription"]:
+                # Fallback to manual input if speech recognition fails or no transcription
+                self.input_speech()
             else:
                 message = speech_to_text["transcription"]
                 self.finalise_email(message)
         except Exception as e:
             print("An exception occurred:", e)
+            self.input_speech()
 
 if __name__ == "__main__":
     app = CustomApp()
