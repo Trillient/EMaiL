@@ -10,9 +10,18 @@ import customtkinter as tk
 import openai
 from dotenv import load_dotenv
 from template import prompt_template
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Set up logging to file
+logging.basicConfig(
+    filename='app.log',
+    filemode='w',
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.DEBUG
+)
 
 # Set up OpenAI API credentials
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -61,17 +70,23 @@ class CustomApp(tk.CTk):
 
     #Record audio from the microphone and save it to a file, stopping when the button is pressed or after max_seconds
     def record_audio(self, filename="speech.wav", max_seconds=120):
-        chunk = 1024  # Record in chunks of 1024 samples
-        sample_format = pyaudio.paInt16  # 16 bits per sample
+        chunk = 1024
+        sample_format = pyaudio.paInt16
         channels = 1
-        fs = 16000  # Record at 16000 samples per second
-        p = pyaudio.PyAudio()  # Create an interface to PortAudio
+        fs = 16000
+        p = pyaudio.PyAudio()
+        logging.info(f"PyAudio instance created: {p}")
 
-        stream = p.open(format=sample_format,
-                        channels=channels,
-                        rate=fs,
-                        frames_per_buffer=chunk,
-                        input=True)
+        try:
+            stream = p.open(format=sample_format,
+                            channels=channels,
+                            rate=fs,
+                            frames_per_buffer=chunk,
+                            input=True)
+            logging.info(f"Audio stream opened: {stream}")
+        except Exception as e:
+            logging.error(f"Error opening audio stream: {e}")
+            return
 
         frames = []  # Initialize array to store frames
         start_time = time.time()
