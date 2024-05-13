@@ -6,8 +6,6 @@ import threading
 import time
 import wave
 import win32com.client as win32
-from google.cloud import speech
-from google.oauth2 import service_account
 import customtkinter as tk
 import openai
 from dotenv import load_dotenv
@@ -19,12 +17,6 @@ load_dotenv()
 # Set up OpenAI API credentials
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
-
-# Set up Google Cloud credentials
-credentials = service_account.Credentials.from_service_account_file(
-    'credentials.json'
-)
-client = speech.SpeechClient(credentials=credentials)
 
 # Class to handle custom errors
 class CustomError(Exception):
