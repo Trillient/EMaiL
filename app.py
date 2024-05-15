@@ -40,26 +40,64 @@ class CustomApp(tk.CTk):
         super().__init__()
 
         # Configure window
-        self.title("EMaiL Generative Assistant")
-        self.geometry("650x350")
+        self.title("Email Generative Assistant")
+        self.geometry("650x400")
+        self.configure(bg_color="#1e1e1e")
 
         # Add your customtkinter widgets here
-        self.label_main_1 = tk.CTkLabel(self, text="Select an email in outlook you'd like to respond to", font=("Arial", 20))
-        self.label_main_1.pack(pady=5)
+        self.label_main_1 = tk.CTkLabel(self, text="Select an email in Outlook you'd like to respond to", font=("Helvetica Neue", 20, "bold"), text_color="#ffffff")
+        self.label_main_1.pack(pady=10)
 
-        self.label_main_2 = tk.CTkLabel(self, text="Record a brief response and we will create a professional response", font=("Arial", 12), wraplength=540)
+        self.label_main_2 = tk.CTkLabel(self, text="Record a brief response and we will create a professional response", font=("Helvetica Neue", 12), wraplength=540, text_color="#a9a9a9")
         self.label_main_2.pack(pady=5)
 
-        self.button_main = tk.CTkButton(self, text="Start Recording", command=self.start_recording)
-        self.button_main.pack(pady=5)
+        self.button_main = tk.CTkButton(self, text="Start Recording", command=self.start_recording, fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff", font=("Helvetica Neue", 14))
+        self.button_main.pack(pady=20)
 
-        self.button_settings = tk.CTkButton(self, text="Settings", command=self.open_settings)
+        self.button_settings = tk.CTkButton(self, text="Settings", command=self.open_settings, fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff", font=("Helvetica Neue", 12))
         self.button_settings.pack(side="top", anchor="ne", padx=10, pady=10)
 
+        # Flags to prevent multiple windows
+        self.is_recording = False
+        self.is_settings_open = False
+
+        # Lock for threading
+        self.lock = threading.Lock()
+
+    def show_custom_error(self, message):
+        # Create a Toplevel window
+        error_window = tk.CTkToplevel()
+        error_window.title("Error")
+        error_window.geometry("400x200")
+        error_window.configure(fg_color="#1e1e1e")
+
+        # Error message label
+        error_label = tk.CTkLabel(error_window, text=message, font=("Helvetica Neue", 14), fg_color="#1e1e1e", text_color="#ff3b30", wraplength=380)
+        error_label.pack(pady=20, padx=20)
+
+        # OK button to close the window
+        ok_button = tk.CTkButton(error_window, text="OK", command=error_window.destroy, fg_color="#ffffff", text_color="#1e1e1e")
+        ok_button.pack(pady=20)
+
+        # Center the window on the screen
+        error_window.update_idletasks()
+        x = (error_window.winfo_screenwidth() - error_window.winfo_width()) // 2
+        y = (error_window.winfo_screenheight() - error_window.winfo_height()) // 2
+        error_window.geometry(f"+{x}+{y}")
+
+        error_window.grab_set()
+        error_window.mainloop()
+
     def open_settings(self):
+        with self.lock:
+            if self.is_settings_open:
+                return
+            self.is_settings_open = True
+
         self.settings_window = tk.CTkToplevel(self)
         self.settings_window.title("Settings")
         self.settings_window.geometry("500x400")
+        self.settings_window.configure(bg_color="#1e1e1e")
 
         # Calculate the position to place the settings window
         main_window_x = self.winfo_x()
@@ -81,23 +119,23 @@ class CustomApp(tk.CTk):
 
         self.settings_window.geometry(f"500x400+{new_x}+{new_y}")
 
-        name_label = tk.CTkLabel(self.settings_window, text="What is your first name?")
+        name_label = tk.CTkLabel(self.settings_window, text="What is your first name?", font=("Helvetica Neue", 12), text_color="#ffffff")
         name_label.pack(pady=(20, 5))
         self.name_entry = tk.CTkEntry(self.settings_window, width=400)
         self.name_entry.pack(pady=(0, 20))
 
-        style_label = tk.CTkLabel(self.settings_window, text="Enter Email Examples here to show us your Email style:")
+        style_label = tk.CTkLabel(self.settings_window, text="Enter Email Examples here to show us your Email style:", font=("Helvetica Neue", 12), text_color="#ffffff")
         style_label.pack(pady=(10, 5))
-        self.style_text = tk.CTkTextbox(self.settings_window, height=10, width=400)
+        self.style_text = tk.CTkTextbox(self.settings_window, height=10, width=400, fg_color="#ffffff", text_color="#000000")
         self.style_text.pack(pady=(0, 20), padx=20, fill='both', expand=True)
 
-        model_label = tk.CTkLabel(self.settings_window, text="Select ChatGPT Model:")
+        model_label = tk.CTkLabel(self.settings_window, text="Select ChatGPT Model:", font=("Helvetica Neue", 12), text_color="#ffffff")
         model_label.pack(pady=(10, 5))
 
         self.model_var = tk.StringVar(value="gpt-3.5-turbo-0125")
-        model_radio_4 = tk.CTkRadioButton(self.settings_window, text="Advanced (GPT-4)", variable=self.model_var, value="gpt-4o")
+        model_radio_4 = tk.CTkRadioButton(self.settings_window, text="Advanced (GPT-4)", variable=self.model_var, value="gpt-4", text_color="#ffffff", fg_color="#007aff")
         model_radio_4.pack(pady=5)
-        model_radio_3 = tk.CTkRadioButton(self.settings_window, text="Simple (GPT-3.5)", variable=self.model_var, value="gpt-3.5-turbo-0125")
+        model_radio_3 = tk.CTkRadioButton(self.settings_window, text="Simple (GPT-3.5)", variable=self.model_var, value="gpt-3.5-turbo-0125", text_color="#ffffff", fg_color="#007aff")
         model_radio_3.pack(pady=5)
 
         try:
@@ -109,7 +147,7 @@ class CustomApp(tk.CTk):
         except FileNotFoundError:
             print("No previous settings found. Starting fresh.")
 
-        save_button = tk.CTkButton(self.settings_window, text="Save Settings", command=self.save_settings)
+        save_button = tk.CTkButton(self.settings_window, text="Save Settings", command=self.save_settings, fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff")
         save_button.pack(pady=10)
 
         # Ensure the settings window stays on top and has focus
@@ -121,6 +159,14 @@ class CustomApp(tk.CTk):
         # Use after_idle to ensure the main window does not take focus back
         self.settings_window.after_idle(self.settings_window.focus_force)
 
+        # Bind close event to reset the flag
+        self.settings_window.protocol("WM_DELETE_WINDOW", self.on_settings_close)
+
+    def on_settings_close(self):
+        with self.lock:
+            self.is_settings_open = False
+        self.settings_window.destroy()
+
     def save_settings(self):
         settings = {
             "user_name": self.name_entry.get(),
@@ -129,7 +175,7 @@ class CustomApp(tk.CTk):
         }
         with open("user_settings.json", "w", encoding='utf-8') as file:
             json.dump(settings, file, ensure_ascii=False, indent=4)
-        self.settings_window.destroy()
+        self.on_settings_close()
 
     def load_user_settings(self):
         try:
@@ -143,8 +189,12 @@ class CustomApp(tk.CTk):
             print("Error decoding settings. Check file format.")
             return None, None
 
-    # Begin main thread
     def start_recording(self):
+        with self.lock:
+            if self.is_recording:
+                return
+            self.is_recording = True
+        self.button_main.pack_forget()  # Hide the Start Recording button
         threading.Thread(target=self.main).start()
 
     def get_selected_email_body_and_item(self):
@@ -155,11 +205,10 @@ class CustomApp(tk.CTk):
                 item = explorer.Selection.Item(1)
                 if hasattr(item, "Body"):
                     return item.Body, item
-            return "No email selected or the selected item is not an email.", None
+            raise CustomError("No email selected or the selected item is not an email.")
         except Exception as e:
-            raise CustomError(f"Error in get_selected_email_body_and_item: {e}")
+            raise CustomError(f"Error accessing the selected email: {e}")
 
-    # Record audio from the microphone and save it to a file, stopping when the button is pressed or after max_seconds
     def record_audio(self, filename="speech.wav", max_seconds=120):
         chunk = 1024
         sample_format = pyaudio.paInt16
@@ -190,10 +239,10 @@ class CustomApp(tk.CTk):
             stop_event.set()
 
         # Add your customtkinter widgets here
-        self.label_rec_1 = tk.CTkLabel(self, text="Please describe the email now - be sure to state if you'd like a short, medium, or long email", wraplength=540, justify="center")
+        self.label_rec_1 = tk.CTkLabel(self, text="Please describe the email now - be sure to state if you'd like a short, medium, or long email", wraplength=540, justify="center", text_color="#ffffff")
         self.label_rec_1.pack(pady=10)
 
-        self.button_rec = tk.CTkButton(self, text="Press this button when you have finished talking", command=stop_recording)
+        self.button_rec = tk.CTkButton(self, text="Press this button when you have finished talking", command=stop_recording, fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff", font=("Helvetica Neue", 12))
         self.button_rec.pack(pady=0)
 
         # Start the recording in a separate thread
@@ -220,7 +269,6 @@ class CustomApp(tk.CTk):
             wf.setframerate(fs)
             wf.writeframes(b''.join(frames))
 
-    # Transcribe speech from an audio file using OpenAI Whisper
     def recognize_speech_from_whisper(self):
         filename = "speech.wav"
         self.record_audio(filename)
@@ -228,23 +276,16 @@ class CustomApp(tk.CTk):
         with open(filename, "rb") as audio_file:
             openai.api_key = openai_api_key  # Ensure the OpenAI API key is set correctly
             try:
-                # Assuming the response is plain text as per your logs
                 transcription_text = openai.Audio.transcribe(
                     model="whisper-1",
                     file=audio_file,
                     response_format="text"
                 )
-                # Check if the transcription_text contains actual text
                 if transcription_text:
                     print("Whisper recognized: " + transcription_text)
                     return {"success": True, "error": None, "transcription": transcription_text}
-                else:
-                    # If no transcription is detected, set it to ":)"
-                    print("No transcription results.")
             except Exception as e:
                 print(f"An exception occurred while processing the transcription: {e}")
-
-            # If there is any issue with transcription or it's empty, set to ":)"
             return {"success": True, "error": "Defaulting to :)", "transcription": ":)"}
 
     def generate_email(self, prompt: str) -> str:
@@ -253,7 +294,7 @@ class CustomApp(tk.CTk):
                 settings = json.load(file)
                 selected_model = settings.get("chatgpt_model", "gpt-3.5-turbo-0125")
         except FileNotFoundError:
-            selected_model = "gpt-3.5-turbo-0125"  # Default to gpt-3.5-turbo-0125 if settings are not found
+            selected_model = "gpt-3.5-turbo-0125"
 
         response = openai.ChatCompletion.create(
             model=selected_model,
@@ -266,31 +307,43 @@ class CustomApp(tk.CTk):
         )
         return response['choices'][0]['message']['content'].strip()
 
-    # Create or reply to an email in Outlook with the generated email body
+    def simple_generate_email(self, prompt: str) -> str:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-0125",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.5
+        )
+        return response['choices'][0]['message']['content'].strip()
+
     def create_email_draft(self, email_body: str, selected_email_item):
         outlook = win32.Dispatch("Outlook.Application")
 
-        if selected_email_item:
-            # Check if the selected item has the ReplyAll method
-            if hasattr(selected_email_item, 'ReplyAll'):
-                mail = selected_email_item.ReplyAll()
-                mail.Body = email_body
+        try:
+            if selected_email_item:
+                if hasattr(selected_email_item, 'ReplyAll'):
+                    mail = selected_email_item.ReplyAll()
+                    mail.Body = email_body
+                else:
+                    mail = outlook.CreateItem(0)
+                    mail.Body = email_body
             else:
-                # Fall back to creating a new mail item if ReplyAll is not applicable
                 mail = outlook.CreateItem(0)
                 mail.Body = email_body
-        else:
-            # Create a new email
-            mail = outlook.CreateItem(0)
-            mail.Body = email_body
 
-        mail.Display(True)  # Show the email draft
+            mail.Display(True)
+        except Exception as e:
+            print(f"Error creating email draft: {e}")
+            self.show_custom_error("Make sure you have an email selected in the Outlook desktop app and are not actively replying to an email currently.")
+            self.clear_rec()
+            return
 
-        # Reset the UI (simulate 'Select new email' functionality)
         self.clear_rec()
 
     def clear_rec(self):
-        # Remove recording labels and buttons
         try:
             self.label_rec_1.pack_forget()
             self.label_rec_2.pack_forget()
@@ -298,33 +351,11 @@ class CustomApp(tk.CTk):
             self.button_rec2.pack_forget()
             self.button_rec3.pack_forget()
         except AttributeError:
-            pass  # Handle the case where some widgets were not created due to errors
-
-        # Reset to initial state with the "Start Recording" button
+            pass
         self.button_main.pack(pady=5)
         pythoncom.CoUninitialize()
-
-    def input_speech(self):
-        def submit():
-            text = entry.get()
-
-            entry.pack_forget()
-            submit_button.pack_forget()
-            label.pack_forget()
-
-            self.finalise_email(text)
-
-        # Label entry stuff
-        label = tk.CTkLabel(self, text="Please enter your response manually, recording failed", font=("Arial", 12))
-        label.pack(pady=10)
-
-        # Create an Entry widget
-        entry = tk.CTkEntry(self, width=400)
-        entry.pack(pady=0)
-
-        # Create a button to submit the text
-        submit_button = tk.CTkButton(self, text="Submit", command=submit)
-        submit_button.pack(pady=5)
+        with self.lock:
+            self.is_recording = False
 
     def finalise_email(self, message):
         user_name, user_defined_style = self.load_user_settings()
@@ -333,37 +364,46 @@ class CustomApp(tk.CTk):
             user_name = "Default User"
             user_defined_style = "Please specify your email style in settings."
 
-        self.label_rec_2 = tk.CTkLabel(self, text=f"{user_name} said: {message}", font=("Arial", 12))
+        self.label_rec_2 = tk.CTkLabel(self, text=f"{user_name} said: {message}", font=("Helvetica Neue", 12), text_color="#a9a9a9")
         self.label_rec_2.pack(pady=15)
 
-        conversation_history, selected_email_item = self.get_selected_email_body_and_item()
-        
+        try:
+            conversation_history, selected_email_item = self.get_selected_email_body_and_item()
+        except CustomError as e:
+            print(e)
+            self.clear_rec()
+            self.show_custom_error("Make sure you have an email selected in the Outlook desktop app and are not actively replying to an email currently.")
+            return
+
         full_prompt = prompt_template.format(
             user_name=user_name,
             user_defined_style=user_defined_style,
             conversation_history=conversation_history,
             speech_to_text_transcription=message
         )
-        email_response = self.generate_email(full_prompt)
 
-        pyperclip.copy(email_response)
-        self.create_email_draft(email_response, selected_email_item)
+        email_response_1 = self.generate_email(full_prompt)
+        simple_prompt = f"Based on {user_name}'s spoken input, convert their spoken words into an Email. This is what they said:\n\n'{message}'"
+        email_response_2 = self.simple_generate_email(simple_prompt)
 
+        final_email = f"{email_response_1}\n\n==\n\n{email_response_2}"
+        
+        pyperclip.copy(final_email)
+        self.create_email_draft(final_email, selected_email_item)
 
     def main(self):
         try:
-            # Speech-to-Text with Whisper
             speech_to_text = self.recognize_speech_from_whisper()
             
             if not speech_to_text["success"] or not speech_to_text["transcription"]:
-                # Fallback to manual input if speech recognition fails or no transcription
-                self.input_speech()
+                raise CustomError("Speech recognition failed.")
             else:
                 message = speech_to_text["transcription"]
                 self.finalise_email(message)
         except Exception as e:
             print("An exception occurred:", e)
-            self.input_speech()  # Fallback to manual input on any error
+            self.clear_rec()
+            self.show_custom_error(str(e))
 
 if __name__ == "__main__":
     app = CustomApp()
