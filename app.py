@@ -61,6 +61,26 @@ class CustomApp(tk.CTk):
         self.settings_window.title("Settings")
         self.settings_window.geometry("500x400")
 
+        # Calculate the position to place the settings window
+        main_window_x = self.winfo_x()
+        main_window_y = self.winfo_y()
+        main_window_width = self.winfo_width()
+        main_window_height = self.winfo_height()
+
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        new_x = main_window_x + main_window_width + 10  # Place it to the right of the main window
+        new_y = main_window_y
+
+        # If the new position goes out of the screen bounds, place it on top of the main window
+        if new_x + 500 > screen_width:
+            new_x = main_window_x
+        if new_y + 400 > screen_height:
+            new_y = main_window_y
+
+        self.settings_window.geometry(f"500x400+{new_x}+{new_y}")
+
         name_label = tk.CTkLabel(self.settings_window, text="What is your first name?")
         name_label.pack(pady=(20, 5))
         self.name_entry = tk.CTkEntry(self.settings_window, width=400)
@@ -71,24 +91,45 @@ class CustomApp(tk.CTk):
         self.style_text = tk.CTkTextbox(self.settings_window, height=10, width=400)
         self.style_text.pack(pady=(0, 20), padx=20, fill='both', expand=True)
 
+        model_label = tk.CTkLabel(self.settings_window, text="Select ChatGPT Model:")
+        model_label.pack(pady=(10, 5))
+
+        self.model_var = tk.StringVar(value="gpt-3.5-turbo-0125")
+        model_radio_4 = tk.CTkRadioButton(self.settings_window, text="Advanced (GPT-4)", variable=self.model_var, value="gpt-4o")
+        model_radio_4.pack(pady=5)
+        model_radio_3 = tk.CTkRadioButton(self.settings_window, text="Simple (GPT-3.5)", variable=self.model_var, value="gpt-3.5-turbo-0125")
+        model_radio_3.pack(pady=5)
+
         try:
             with open("user_settings.json", "r", encoding='utf-8') as file:
                 settings = json.load(file)
                 self.name_entry.insert(0, settings["user_name"])
                 self.style_text.insert('1.0', settings["user_email_style"])
+                self.model_var.set(settings.get("chatgpt_model", "gpt-3.5-turbo-0125"))
         except FileNotFoundError:
             print("No previous settings found. Starting fresh.")
 
         save_button = tk.CTkButton(self.settings_window, text="Save Settings", command=self.save_settings)
         save_button.pack(pady=10)
 
+        # Ensure the settings window stays on top and has focus
+        self.settings_window.lift()
+        self.settings_window.attributes('-topmost', True)
+        self.settings_window.focus_force()
+        self.settings_window.attributes('-topmost', False)
+
+        # Use after_idle to ensure the main window does not take focus back
+        self.settings_window.after_idle(self.settings_window.focus_force)
+
     def save_settings(self):
         settings = {
             "user_name": self.name_entry.get(),
-            "user_email_style": self.style_text.get('1.0', 'end-1c')
+            "user_email_style": self.style_text.get('1.0', 'end-1c'),
+            "chatgpt_model": self.model_var.get()
         }
         with open("user_settings.json", "w", encoding='utf-8') as file:
             json.dump(settings, file, ensure_ascii=False, indent=4)
+        self.settings_window.destroy()
 
     def load_user_settings(self):
         try:
@@ -118,7 +159,7 @@ class CustomApp(tk.CTk):
         except Exception as e:
             raise CustomError(f"Error in get_selected_email_body_and_item: {e}")
 
-    #Record audio from the microphone and save it to a file, stopping when the button is pressed or after max_seconds
+    # Record audio from the microphone and save it to a file, stopping when the button is pressed or after max_seconds
     def record_audio(self, filename="speech.wav", max_seconds=120):
         chunk = 1024
         sample_format = pyaudio.paInt16
@@ -206,16 +247,21 @@ class CustomApp(tk.CTk):
             # If there is any issue with transcription or it's empty, set to ":)"
             return {"success": True, "error": "Defaulting to :)", "transcription": ":)"}
 
-
-    # Generate an email using GPT based on the prompt
     def generate_email(self, prompt: str) -> str:
+        try:
+            with open("user_settings.json", "r", encoding='utf-8') as file:
+                settings = json.load(file)
+                selected_model = settings.get("chatgpt_model", "gpt-3.5-turbo-0125")
+        except FileNotFoundError:
+            selected_model = "gpt-3.5-turbo-0125"  # Default to gpt-3.5-turbo-0125 if settings are not found
+
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-0125",
+            model=selected_model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=600,
+            max_tokens=4000,
             temperature=0.7
         )
         return response['choices'][0]['message']['content'].strip()
