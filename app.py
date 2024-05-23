@@ -41,7 +41,7 @@ class CustomApp(tk.CTk):
 
         # Configure window
         self.title("Email Generative Assistant")
-        self.geometry("650x400")
+        self.geometry("1200x800")
         self.configure(bg_color="#1e1e1e")
 
         # Add your customtkinter widgets here
@@ -56,6 +56,9 @@ class CustomApp(tk.CTk):
 
         self.button_settings = tk.CTkButton(self, text="Settings", command=self.open_settings, fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff", font=("Helvetica Neue", 12))
         self.button_settings.pack(side="top", anchor="ne", padx=10, pady=10)
+
+        self.option_labels = []
+        self.option_buttons = []
 
         # Flags to prevent multiple windows
         self.is_recording = False
@@ -129,21 +132,11 @@ class CustomApp(tk.CTk):
         self.style_text = tk.CTkTextbox(self.settings_window, height=10, width=400, fg_color="#ffffff", text_color="#000000")
         self.style_text.pack(pady=(0, 20), padx=20, fill='both', expand=True)
 
-        model_label = tk.CTkLabel(self.settings_window, text="Select ChatGPT Model:", font=("Helvetica Neue", 12), text_color="#ffffff")
-        model_label.pack(pady=(10, 5))
-
-        self.model_var = tk.StringVar(value="gpt-3.5-turbo-0125")
-        model_radio_4 = tk.CTkRadioButton(self.settings_window, text="Advanced (GPT-4)", variable=self.model_var, value="gpt-4", text_color="#ffffff", fg_color="#007aff")
-        model_radio_4.pack(pady=5)
-        model_radio_3 = tk.CTkRadioButton(self.settings_window, text="Simple (GPT-3.5)", variable=self.model_var, value="gpt-3.5-turbo-0125", text_color="#ffffff", fg_color="#007aff")
-        model_radio_3.pack(pady=5)
-
         try:
             with open("user_settings.json", "r", encoding='utf-8') as file:
                 settings = json.load(file)
                 self.name_entry.insert(0, settings["user_name"])
                 self.style_text.insert('1.0', settings["user_email_style"])
-                self.model_var.set(settings.get("chatgpt_model", "gpt-3.5-turbo-0125"))
         except FileNotFoundError:
             print("No previous settings found. Starting fresh.")
 
@@ -170,8 +163,7 @@ class CustomApp(tk.CTk):
     def save_settings(self):
         settings = {
             "user_name": self.name_entry.get(),
-            "user_email_style": self.style_text.get('1.0', 'end-1c'),
-            "chatgpt_model": self.model_var.get()
+            "user_email_style": self.style_text.get('1.0', 'end-1c')
         }
         with open("user_settings.json", "w", encoding='utf-8') as file:
             json.dump(settings, file, ensure_ascii=False, indent=4)
@@ -286,43 +278,74 @@ class CustomApp(tk.CTk):
                     return {"success": True, "error": None, "transcription": transcription_text}
             except Exception as e:
                 print(f"An exception occurred while processing the transcription: {e}")
-            return {"success": True, "error": "Defaulting to :)", "transcription": ":)"}
+            return {"success": False, "error": "Defaulting to :)", "transcription": ":)"}
 
-    def generate_email(self, prompt: str) -> str:
-        try:
-            with open("user_settings.json", "r", encoding='utf-8') as file:
-                settings = json.load(file)
-                selected_model = settings.get("chatgpt_model", "gpt-3.5-turbo-0125")
-        except FileNotFoundError:
-            selected_model = "gpt-3.5-turbo-0125"
-
+    def generate_email(self, prompt: str, temperature=0.7) -> str:
         response = openai.ChatCompletion.create(
-            model=selected_model,
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=4000,
-            temperature=0.7
+            temperature=temperature
         )
         return response['choices'][0]['message']['content'].strip()
 
-    def simple_generate_email(self, prompt: str) -> str:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-0125",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.5
-        )
-        return response['choices'][0]['message']['content'].strip()
+    def clean_generated_email(self, email_body: str) -> str:
+        lines = email_body.split('\n')
+        cleaned_lines = [line for line in lines if not line.lower().startswith('subject:')]
+        return '\n'.join(cleaned_lines).strip()
 
-    def create_email_draft(self, email_body: str, selected_email_item):
-        outlook = win32.Dispatch("Outlook.Application")
+    def generate_email_options(self, full_prompt: str, speech_to_text: str):
+        # Option 1: Full prompt with user inputs and template
+        email_option_1 = self.generate_email(full_prompt, temperature=0.7)
+        email_option_1 = self.clean_generated_email(email_option_1)
+        
+        # Option 2: Direct conversion of speech to email format
+        email_option_2 = self.generate_email(f"Convert this speech into a professional email: '{speech_to_text}'", temperature=0.7)
+        email_option_2 = self.clean_generated_email(email_option_2)
+        
+        # Option 3: Direct speech-to-text output
+        email_option_3 = speech_to_text
 
+        return email_option_1, email_option_2, email_option_3
+
+    def display_email_options(self, options):
+        for widget in self.winfo_children():
+            widget.pack_forget()
+
+        self.option_labels = []
+        self.option_buttons = []
+
+        options_frame = tk.CTkFrame(self)
+        options_frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        prompt_label = tk.CTkLabel(options_frame, text="Select Your Favourite Email Generation", font=("Helvetica Neue", 20, "bold"), text_color="#ffffff")
+        prompt_label.grid(row=0, column=0, columnspan=3, pady=10)
+
+        for i, option in enumerate(options, start=1):
+            option_frame = tk.CTkFrame(options_frame)
+            option_frame.grid(row=1, column=i-1, padx=10)
+
+            label = tk.CTkLabel(option_frame, text=f"Option {i}:", font=("Helvetica Neue", 14), text_color="#ffffff")
+            label.pack(pady=(10, 5))
+            self.option_labels.append(label)
+
+            text_box = tk.CTkTextbox(option_frame, height=300, width=300, fg_color="#ffffff", text_color="#000000", wrap="word")  # Increased height for better visibility and proper word wrap
+            text_box.insert('1.0', option)
+            text_box.pack(pady=(0, 10), padx=20, fill='both', expand=True)
+            self.option_labels.append(text_box)
+
+            button = tk.CTkButton(option_frame, text=f"Select Option {i}", command=lambda opt=option: self.create_email_draft(opt), fg_color="#007aff", hover_color="#005bb5", text_color="#ffffff")
+            button.pack(pady=5)
+            self.option_buttons.append(button)
+
+    def create_email_draft(self, email_body: str):
         try:
+            conversation_history, selected_email_item = self.get_selected_email_body_and_item()
+            outlook = win32.Dispatch("Outlook.Application")
+            
             if selected_email_item:
                 if hasattr(selected_email_item, 'ReplyAll'):
                     mail = selected_email_item.ReplyAll()
@@ -338,21 +361,27 @@ class CustomApp(tk.CTk):
         except Exception as e:
             print(f"Error creating email draft: {e}")
             self.show_custom_error("Make sure you have an email selected in the Outlook desktop app and are not actively replying to an email currently.")
-            self.clear_rec()
             return
 
-        self.clear_rec()
+        self.reset_to_main()
+
+    def reset_to_main(self):
+        for widget in self.winfo_children():
+            widget.pack_forget()
+
+        self.label_main_1.pack(pady=10)
+        self.label_main_2.pack(pady=5)
+        self.button_main.pack(pady=20)
+        self.button_settings.pack(side="top", anchor="ne", padx=10, pady=10)
+        with self.lock:
+            self.is_recording = False
 
     def clear_rec(self):
         try:
             self.label_rec_1.pack_forget()
-            self.label_rec_2.pack_forget()
             self.button_rec.pack_forget()
-            self.button_rec2.pack_forget()
-            self.button_rec3.pack_forget()
         except AttributeError:
             pass
-        self.button_main.pack(pady=5)
         pythoncom.CoUninitialize()
         with self.lock:
             self.is_recording = False
@@ -363,9 +392,6 @@ class CustomApp(tk.CTk):
             print("Error loading settings. Using default values.")
             user_name = "Default User"
             user_defined_style = "Please specify your email style in settings."
-
-        self.label_rec_2 = tk.CTkLabel(self, text=f"{user_name} said: {message}", font=("Helvetica Neue", 12), text_color="#a9a9a9")
-        self.label_rec_2.pack(pady=15)
 
         try:
             conversation_history, selected_email_item = self.get_selected_email_body_and_item()
@@ -382,14 +408,8 @@ class CustomApp(tk.CTk):
             speech_to_text_transcription=message
         )
 
-        email_response_1 = self.generate_email(full_prompt)
-        simple_prompt = f"Based on {user_name}'s spoken input, convert their spoken words into an Email. This is what they said:\n\n'{message}'"
-        email_response_2 = self.simple_generate_email(simple_prompt)
-
-        final_email = f"{email_response_1}\n\n==\n\n{email_response_2}"
-        
-        pyperclip.copy(final_email)
-        self.create_email_draft(final_email, selected_email_item)
+        email_options = self.generate_email_options(full_prompt, message)
+        self.display_email_options(email_options)
 
     def main(self):
         try:

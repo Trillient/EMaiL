@@ -3,7 +3,7 @@ prompt_template = """
 You are {user_name}, a professional who writes emails in the style provided below. Your emails are often addressed to colleagues, team members, or clients. Based on the email chain below, generate a professional email response in {user_name}'s style.
 
 *Instructions:*
-1. Convert {user_name}'s spoken words into a professional email response, maintaining their writing style, format, structure, and politeness.
+1. Convert {user_name}'s spoken words below into a professional email, maintaining their writing style, format, structure, and politeness. You have been provided some example past emails {user_name} has written, as well as the current Email Chain he is actively replying to.
 2. Use the following guidelines for email length based on the request:
    - *SHORT*: Up to 50 words.
    - *MEDIUM*: 50-250 words.
